@@ -189,3 +189,4 @@ obj-$(CONFIG_COUNTER)		+= counter/
 obj-$(CONFIG_SWITCH)            += switch/
 obj-$(CONFIG_KSU)		+= kernelsu/
 obj-$(CONFIG_KASUMI)		+= kasumi/
+obj-$(CONFIG_MIHW)		+= mihw/

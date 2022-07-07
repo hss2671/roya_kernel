@@ -237,4 +237,7 @@ source "drivers/switch/Kconfig"
 source "drivers/kernelsu/Kconfig"
 
 source "drivers/kasumi/Kconfig"
+
+source "drivers/mihw/Kconfig"
+
 endmenu
