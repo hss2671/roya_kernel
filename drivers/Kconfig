@@ -240,4 +240,6 @@ source "drivers/kasumi/Kconfig"
 
 source "drivers/mihw/Kconfig"
 
+source "drivers/fragmention/Kconfig"
+
 endmenu

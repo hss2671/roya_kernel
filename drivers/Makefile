@@ -190,3 +190,4 @@ obj-$(CONFIG_SWITCH)            += switch/
 obj-$(CONFIG_KSU)		+= kernelsu/
 obj-$(CONFIG_KASUMI)		+= kasumi/
 obj-$(CONFIG_MIHW)		+= mihw/
+obj-$(CONFIG_MI_FRAGMENTION)	+= fragmention/
