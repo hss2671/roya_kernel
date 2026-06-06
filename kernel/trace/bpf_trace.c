@@ -422,6 +422,11 @@ static __printf(1, 0) int bpf_do_trace_printk(const char *fmt, ...)
 
 	return ret;
 }
+#else
+static inline __printf(1, 0) int bpf_do_trace_printk(const char *fmt, ...)
+{
+	return 0;
+}
 #endif
 
 /*
