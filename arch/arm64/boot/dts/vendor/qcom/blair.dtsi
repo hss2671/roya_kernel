@@ -917,7 +917,7 @@
 
 	cpu_cpu_ddr_bw: qcom,cpu-cpu-ddr-bw {
 		compatible = "qcom,devfreq-icc";
-		governor = "bw_hwmon";
+		governor = "performance";
 		interconnects = <&bimc MASTER_AMPSS_M0 &bimc SLAVE_EBI>;
 		qcom,active-only;
 		operating-points-v2 = <&ddr_bw_opp_table>;
