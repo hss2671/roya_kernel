@@ -45,6 +45,47 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/namei.h>
+#include <linux/atomic.h>
+
+extern bool kasumi_should_hide(const char *path);
+extern char *kasumi_resolve_target(const char *path);
+extern atomic_long_t kasumi_ioctl_tgid;
+extern atomic_long_t kasumi_xattr_source_tgid;
+extern atomic_t kasumi_rule_count;
+extern atomic_t kasumi_hide_count;
+
+static struct filename *kasumi_hook_getname_flags(struct filename *result)
+{
+	char *target;
+
+	if (IS_ERR_OR_NULL(result))
+		return result;
+
+	if (atomic_long_read(&kasumi_ioctl_tgid) == (long)task_tgid_vnr(current))
+		return result;
+	if (atomic_long_read(&kasumi_xattr_source_tgid) == (long)task_tgid_vnr(current))
+		return result;
+
+	if (!atomic_read(&kasumi_rule_count) && !atomic_read(&kasumi_hide_count))
+		return result;
+
+	if (kasumi_should_hide(result->name)) {
+		putname(result);
+		return ERR_PTR(-ENOENT);
+	}
+
+	if (result->name[0] == '/') {
+		target = kasumi_resolve_target(result->name);
+		if (target) {
+			struct filename *fname = getname_kernel(target);
+			kfree(target);
+			putname(result);
+			return fname;
+		}
+	}
+
+	return result;
+}
 
 /* [Feb-1997 T. Schoebel-Theuer]
  * Fundamental changes in the pathname lookup mechanisms (namei)
@@ -203,7 +244,7 @@ getname_flags(const char __user *filename, int flags, int *empty)
 	result->uptr = filename;
 	result->aname = NULL;
 	audit_getname(result);
-	return result;
+	return kasumi_hook_getname_flags(result);
 }
 
 struct filename *

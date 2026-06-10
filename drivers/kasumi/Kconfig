@@ -1,0 +1,6 @@
+config KASUMI
+	bool "Kasumi path control and hiding support"
+	default n
+	help
+	  Kasumi is an in-tree kernel path redirection, hiding, and spoofing
+	  driver that provides VFS and syscall-level path controls.

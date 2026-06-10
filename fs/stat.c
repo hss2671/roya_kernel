@@ -22,6 +22,8 @@
 #include <asm/unistd.h>
 #include "mount.h"
 
+extern void kasumi_hook_vfs_getattr(const struct path *path, struct kstat *stat);
+
 /**
  * generic_fillattr - Fill in the basic attributes from the inode struct
  * @inode: Inode to use as the source
@@ -125,7 +127,10 @@ int vfs_getattr(const struct path *path, struct kstat *stat,
 	retval = security_inode_getattr(path);
 	if (retval)
 		return retval;
-	return vfs_getattr_nosec(path, stat, request_mask, query_flags);
+	retval = vfs_getattr_nosec(path, stat, request_mask, query_flags);
+	if (!retval)
+		kasumi_hook_vfs_getattr(path, stat);
+	return retval;
 }
 EXPORT_SYMBOL_NS(vfs_getattr, ANDROID_GKI_VFS_EXPORT_ONLY);
 
