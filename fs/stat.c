@@ -20,6 +20,7 @@
 
 #include <linux/uaccess.h>
 #include <asm/unistd.h>
+#include "mount.h"
 
 /**
  * generic_fillattr - Fill in the basic attributes from the inode struct
@@ -65,6 +66,7 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
 		      u32 request_mask, unsigned int query_flags)
 {
 	struct inode *inode = d_backing_inode(path->dentry);
+	int retval = 0;
 
 	memset(stat, 0, sizeof(*stat));
 	stat->result_mask |= STATX_BASIC_STATS;
@@ -77,11 +79,19 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
 	if (IS_AUTOMOUNT(inode))
 		stat->attributes |= STATX_ATTR_AUTOMOUNT;
 
-	if (inode->i_op->getattr)
-		return inode->i_op->getattr(path, stat, request_mask,
+	if (inode->i_op->getattr) {
+		retval = inode->i_op->getattr(path, stat, request_mask,
 					    query_flags);
+		if (!retval) {
+			stat->mnt_id = real_mount(path->mnt)->mnt_id;
+			stat->result_mask |= STATX_MNT_ID;
+		}
+		return retval;
+	}
 
 	generic_fillattr(inode, stat);
+	stat->mnt_id = real_mount(path->mnt)->mnt_id;
+	stat->result_mask |= STATX_MNT_ID;
 	return 0;
 }
 EXPORT_SYMBOL(vfs_getattr_nosec);
@@ -579,6 +589,7 @@ cp_statx(const struct kstat *stat, struct statx __user *buffer)
 	tmp.stx_rdev_minor = MINOR(stat->rdev);
 	tmp.stx_dev_major = MAJOR(stat->dev);
 	tmp.stx_dev_minor = MINOR(stat->dev);
+	tmp.stx_mnt_id = stat->mnt_id;
 
 	return copy_to_user(buffer, &tmp, sizeof(tmp)) ? -EFAULT : 0;
 }
