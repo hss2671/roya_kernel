@@ -4226,3 +4226,19 @@ const struct proc_ns_operations mntns_operations = {
 	.install	= mntns_install,
 	.owner		= mntns_owner,
 };
+
+void kasumi_reorder_mnt_id(struct mnt_namespace *ns)
+{
+	struct mount *mnt;
+	int id = 40;
+
+	if (!ns)
+		return;
+
+	down_write(&namespace_sem);
+	list_for_each_entry(mnt, &ns->list, mnt_list) {
+		mnt->mnt_id = id++;
+	}
+	up_write(&namespace_sem);
+}
+
