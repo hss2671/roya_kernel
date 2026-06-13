@@ -83,6 +83,7 @@ static KASUMI_NOCFI int kasumi_dispatch_cmd(unsigned int cmd, void __user *arg)
 		kasumi_current_mirror_path = kasumi_mirror_path_buf;
 		kasumi_current_mirror_name = kasumi_mirror_name_buf;
 		mutex_unlock(&kasumi_config_mutex);
+		kasumi_fake_mi_invalidate_all();
 		rcu_barrier();
 		return 0;
 	}

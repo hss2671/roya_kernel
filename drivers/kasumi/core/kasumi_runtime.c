@@ -91,7 +91,7 @@ kasumi_ksu_is_allow_uid_fn kasumi_ksu_is_allow_uid_ptr;
 kasumi_ksu_uid_should_umount_fn kasumi_ksu_uid_should_umount_ptr;
 
 bool kasumi_debug_enabled;
-bool kasumi_stealth_enabled = true;
+bool kasumi_stealth_enabled;
 
 char kasumi_mirror_path_buf[PATH_MAX] = KASUMI_DEFAULT_MIRROR_PATH;
 char kasumi_mirror_name_buf[NAME_MAX] = KASUMI_DEFAULT_MIRROR_NAME;
@@ -113,7 +113,7 @@ int kasumi_mount_hide_read_fallback_registered;
 int kasumi_mount_hide_pread_fallback_registered;
 int kasumi_maps_seq_read_registered;
 int kasumi_proc_proxy_registered;
-int kasumi_feature_enabled_mask = 0xFFFFFFFF;
+int kasumi_feature_enabled_mask;
 int kasumi_statfs_kretprobe_registered;
 int kasumi_statfs_tracepoint_registered;
 int kasumi_ni_kprobe_registered;
@@ -548,6 +548,8 @@ void kasumi_cleanup_locked(void)
 	int bkt;
 
 	kasumi_enabled = false;
+	kasumi_stealth_enabled = false;
+	kasumi_feature_enabled_mask = 0;
 	kasumi_file_view_clear();
 
 	hash_for_each_safe(kasumi_paths, bkt, tmp, entry, node) {
