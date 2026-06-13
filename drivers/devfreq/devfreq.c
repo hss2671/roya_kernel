@@ -1357,6 +1357,11 @@ static ssize_t __maybe_unused max_freq_store(struct device *dev, struct device_a
 	unsigned long value;
 	int ret;
 
+	if (df->dev.parent && dev_name(df->dev.parent) &&
+	    !strcmp(dev_name(df->dev.parent), "kgsl-3d0")) {
+		return count;
+	}
+
 	ret = sscanf(buf, "%lu", &value);
 	if (ret != 1)
 		return -EINVAL;
@@ -1396,7 +1401,7 @@ static ssize_t max_freq_show(struct device *dev, struct device_attribute *attr,
 
 	return sprintf(buf, "%lu\n", min(df->scaling_max_freq, df->max_freq));
 }
-static DEVICE_ATTR_RO(max_freq);
+static DEVICE_ATTR_RW(max_freq);
 
 static ssize_t available_frequencies_show(struct device *d,
 					  struct device_attribute *attr,
@@ -1485,7 +1490,28 @@ static struct attribute *devfreq_attrs[] = {
 	&dev_attr_trans_stat.attr,
 	NULL,
 };
-ATTRIBUTE_GROUPS(devfreq);
+static umode_t devfreq_attrs_is_visible(struct kobject *kobj, struct attribute *attr, int n)
+{
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct devfreq *df = to_devfreq(dev);
+
+	if (attr == &dev_attr_max_freq.attr) {
+		if (df->dev.parent && dev_name(df->dev.parent) &&
+		    !strcmp(dev_name(df->dev.parent), "kgsl-3d0"))
+			return attr->mode;
+		return 0444;
+	}
+	return attr->mode;
+}
+
+static const struct attribute_group devfreq_group = {
+	.attrs = devfreq_attrs,
+	.is_visible = devfreq_attrs_is_visible,
+};
+static const struct attribute_group *const devfreq_groups[] = {
+	&devfreq_group,
+	NULL,
+};
 
 static int __init devfreq_init(void)
 {

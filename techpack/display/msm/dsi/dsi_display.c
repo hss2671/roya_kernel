@@ -7807,6 +7807,7 @@ int dsi_display_set_mode(struct dsi_display *display,
 	}
 
 	memcpy(display->panel->cur_mode, &adj_mode, sizeof(adj_mode));
+	WRITE_ONCE(cur_refresh_rate, timing.refresh_rate);
 error:
 	mutex_unlock(&display->display_lock);
 	return rc;

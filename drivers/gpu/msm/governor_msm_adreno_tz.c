@@ -408,7 +408,7 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 			simple_gpu_algorithm(level, &val, priv);
 		} else {
 			if (refresh_rate >= 120)
-				priv->bin.busy_time += (priv->bin.busy_time >> 1);
+				priv->bin.busy_time += (priv->bin.busy_time >> 1) + (priv->bin.busy_time >> 2);
 			else if (refresh_rate == 90)
 				priv->bin.busy_time += (priv->bin.busy_time >> 2);
 			val = __secure_tz_update_entry3(level, priv->bin.total_time,
