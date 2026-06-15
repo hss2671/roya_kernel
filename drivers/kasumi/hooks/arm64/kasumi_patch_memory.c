@@ -121,11 +121,17 @@ unsigned long kasumi_phys_from_virt(unsigned long addr, int *err)
 #if defined(pud_leaf)
 	if (pud_leaf(*pud))
 		return __pud_to_phys(*pud) + (addr & ~PUD_MASK);
+#elif defined(pud_sect)
+	if (pud_sect(*pud))
+		return __pud_to_phys(*pud) + (addr & ~PUD_MASK);
 #endif
 
 	pmd = pmd_offset(pud, addr);
 #if defined(pmd_leaf)
 	if (pmd_leaf(*pmd))
+		return __pmd_to_phys(*pmd) + (addr & ~PMD_MASK);
+#elif defined(pmd_sect)
+	if (pmd_sect(*pmd))
 		return __pmd_to_phys(*pmd) + (addr & ~PMD_MASK);
 #endif
 	if (pmd_none(*pmd) || pmd_bad(*pmd))

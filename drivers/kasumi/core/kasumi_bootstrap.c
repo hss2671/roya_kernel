@@ -110,6 +110,9 @@ static int kasumi_resolve_runtime_symbols(void)
 	kasumi_filp_close = (void *)kasumi_lookup_callable("filp_close");
 	kasumi_kernel_read = (void *)kasumi_lookup_callable("kernel_read");
 	kasumi_vfs_getattr = (void *)kasumi_lookup_callable("vfs_getattr");
+	kasumi_vfs_getxattr_addr = (void *)kasumi_lookup_callable("vfs_getxattr");
+	if (!kasumi_vfs_getxattr_addr)
+		pr_warn("Kasumi: vfs_getxattr not found, SELinux context spoofing disabled\n");
 	kasumi_dentry_open = (void *)kasumi_lookup_callable("dentry_open");
 	kasumi_d_absolute_path = (void *)kasumi_lookup_callable("d_absolute_path");
 	kasumi_dentry_path_raw = (void *)kasumi_lookup_callable("dentry_path_raw");
