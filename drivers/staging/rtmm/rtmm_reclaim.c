@@ -119,6 +119,7 @@ struct rtmm_reclaim {
 };
 
 struct rtmm_reclaim __reclaim;
+static atomic_t rtmm_reclaim_depth = ATOMIC_INIT(0);
 
 static inline struct rtmm_reclaim *get_reclaim(void)
 {
@@ -321,8 +322,15 @@ static int mem_global_reclaim(unsigned long nr_to_reclaim, int swappiness)
 #define RECLAIM_PAGES_PER_LOOP MB_TO_PAGES(1)
 
 	unsigned long nr_reclaimed = 0;
-	int loop = nr_to_reclaim / RECLAIM_PAGES_PER_LOOP;
-	int remain = nr_to_reclaim % RECLAIM_PAGES_PER_LOOP;
+	int loop, remain;
+
+	if (atomic_inc_return(&rtmm_reclaim_depth) > 1) {
+		atomic_dec(&rtmm_reclaim_depth);
+		return 0;
+	}
+
+	loop = nr_to_reclaim / RECLAIM_PAGES_PER_LOOP;
+	remain = nr_to_reclaim % RECLAIM_PAGES_PER_LOOP;
 
 	/* Currently we only consider loops instead of nr_to_reclaim */
 	while (loop--) {
@@ -337,6 +345,7 @@ static int mem_global_reclaim(unsigned long nr_to_reclaim, int swappiness)
 	pr_info("global reclaim: try to reclaim %ld, reclaimed %ld, swappiness %d\n",
 		nr_to_reclaim, nr_reclaimed, swappiness);
 
+	atomic_dec(&rtmm_reclaim_depth);
 	return nr_reclaimed;
 }
 
@@ -423,12 +432,12 @@ static int mem_reclaim_thread(void *data)
 					reclaim->stat[RECLAIM_PROC].pid = cmd->pid;
 				break;
 
-			case RECLAIM_GLOBAL:
-			case RECLAIM_AUTO:
-				reclaim->reclaim_swappiness = cmd->swappiness;
-				nr_reclaimed = mem_global_reclaim(cmd->nr_to_reclaim, cmd->swappiness);
-				reclaim->reclaim_swappiness = INVALID_RECLAIM_SWAPPINESS;
-				break;
+		case RECLAIM_GLOBAL:
+		case RECLAIM_AUTO:
+			WRITE_ONCE(reclaim->reclaim_swappiness, cmd->swappiness);
+			nr_reclaimed = mem_global_reclaim(cmd->nr_to_reclaim, cmd->swappiness);
+			WRITE_ONCE(reclaim->reclaim_swappiness, INVALID_RECLAIM_SWAPPINESS);
+			break;
 
 			default:
 				pr_err("unknown type %d", cmd->type);
@@ -772,7 +781,7 @@ static void __init reclaim_init(struct rtmm_reclaim *reclaim)
 	reclaim->auto_reclaim_max = DEFAULT_AUTO_RECLAIM_MAX;
 	reclaim->global_reclaim_max = DEFAULT_GLOBAL_RECLAIM_MAX;
 	reclaim->default_swappiness = DEFAULT_RECLAIM_SWAPPINESS;
-	reclaim->reclaim_swappiness = INVALID_RECLAIM_SWAPPINESS;
+	WRITE_ONCE(reclaim->reclaim_swappiness, INVALID_RECLAIM_SWAPPINESS);
 }
 
 bool rtmm_reclaim(const char *name)
@@ -783,10 +792,10 @@ bool rtmm_reclaim(const char *name)
 int rtmm_reclaim_swappiness(void)
 {
 	struct rtmm_reclaim *reclaim = get_reclaim();
-	int swappiness = reclaim->default_swappiness;
+	int swappiness = READ_ONCE(reclaim->default_swappiness);
 
-	if (reclaim->reclaim_swappiness != INVALID_RECLAIM_SWAPPINESS)
-		swappiness = reclaim->reclaim_swappiness;
+	if (READ_ONCE(reclaim->reclaim_swappiness) != INVALID_RECLAIM_SWAPPINESS)
+		swappiness = READ_ONCE(reclaim->reclaim_swappiness);
 
 	return (int)swappiness;
 }
