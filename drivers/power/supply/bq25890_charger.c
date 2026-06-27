@@ -1041,9 +1041,9 @@ static void bq25890_handle_state_change(struct bq25890_device *bq,
 	if (old_state.vbus_status == 0 && new_state->vbus_status != 0) {
 		pr_err("southchip bc1.2 done, open ap dpdm\n");
 		if (bq->chip_id == SC8989X_ID) {
-			pr_info("set Vindpm to 4800mV\n");
+			pr_info("set Vindpm to 4500mV\n");
 			bq25890_field_write(bq, F_FORCE_VINDPM, 1);
-			bq25890_field_write(bq, F_VINDPM, 0x16);//Vindpm 4.8V
+			bq25890_field_write(bq, F_VINDPM, 0x13);//Vindpm 4.5V
 		
 			schedule_delayed_work(&bq->detect_vbat_set_vindpm_work, msecs_to_jiffies(2000));
                 }
@@ -1656,17 +1656,17 @@ static void bq25890_detect_vbat_set_vindpm_work(struct work_struct *work)
 	vbat = 2304 + vbat * 20;
 	pr_info("bq25890_detect_vbat_set_vindpm_work:vbat:%dmV\n",vbat);
 	if (vbat <= min_charger_voltage_1) {
-		// <=4v,set vindpm 4.4
-		pr_info("vbat less than 4000 mv set Vindpm to 4400mV\n");
-		bq25890_field_write(bq, F_VINDPM, 0x12);//Vindpm 4.4V
+		// <=4v,set vindpm 4.2
+		pr_info("vbat less than 4000 mv set Vindpm to 4200mV\n");
+		bq25890_field_write(bq, F_VINDPM, 0x10);//Vindpm 4.2V
 	} else if (vbat <= min_charger_voltage_2) {
-		// 4v<vbat<=4.3v,vindpm 4.6
-		pr_info(" set Vindpm to 4600mv\n");
-		bq25890_field_write(bq, F_VINDPM, 0x14);
+		// 4v<vbat<=4.3v,vindpm 4.4
+		pr_info(" set Vindpm to 4400mv\n");
+		bq25890_field_write(bq, F_VINDPM, 0x12);
 	} else {
-		// vbat>4.3v,vindpm 4.8
-		pr_info(" set Vindpm to 4800mv\n");
-		bq25890_field_write(bq, F_VINDPM, 0x16);
+		// vbat>4.3v,vindpm 4.5
+		pr_info(" set Vindpm to 4500mv\n");
+		bq25890_field_write(bq, F_VINDPM, 0x13);
 	}
 	schedule_delayed_work(&bq->detect_vbat_set_vindpm_work, msecs_to_jiffies(10000));
 
