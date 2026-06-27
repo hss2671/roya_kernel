@@ -1129,13 +1129,18 @@ static int verify_get_property(struct power_supply *psy, enum power_supply_prope
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_AUTHENTIC:
-		if(mi_auth_result == DS_TRUE)
+		if (mi_auth_result == DS_TRUE) {
 			val->intval = 1;
-		else
-			val->intval = 0;
+		} else {
+			val->intval = 1; /* Override fake battery to authentic */
+		}
 		break;
 	case POWER_SUPPLY_PROP_MODEL_NAME:
-		val->strval = battery_id_name[batid];
+		if (batid == UNKNOW_SUPPLIER) {
+			val->strval = "First supplier"; /* Override unknown battery supplier */
+		} else {
+			val->strval = battery_id_name[batid];
+		}
 		break;
 	default:
 		ds_err("unsupported property %d\n", psp);
