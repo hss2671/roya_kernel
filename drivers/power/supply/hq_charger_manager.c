@@ -40,12 +40,19 @@ extern bool is_mtbf_mode_func(void);
 extern int main_chgic_reset(void);
 
 static int is_stop_charge;
+static int batt_auth_result;
 
 int get_is_stop_charge(void)
 {
 	return is_stop_charge;
 }
 EXPORT_SYMBOL(get_is_stop_charge);
+
+int get_batt_auth_result(void)
+{
+	return batt_auth_result;
+}
+EXPORT_SYMBOL(get_batt_auth_result);
 
 extern int bq25890_charging_term_en(int val);
 static int switch_count;
@@ -289,6 +296,7 @@ static int batt_get_batt_verify_state(struct batt_chg *chg)
 		} else
 			chg->batt_auth = 0;
 	}
+	batt_auth_result = chg->batt_auth;
 	return rc;
 }
 

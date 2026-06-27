@@ -126,6 +126,13 @@ unsigned char crc_low_first(unsigned char *ptr, unsigned char len)
 	return (crc);
 }
 
+int ds28e16_flag;
+int get_authenice_id(void)
+{
+	return ds28e16_flag;
+}
+EXPORT_SYMBOL(get_authenice_id);
+
 short Read_RomID(unsigned char *RomID)
 {
 	unsigned char i;
@@ -1805,6 +1812,7 @@ static int ds28e16_probe(struct platform_device *pdev)
 				msecs_to_jiffies(500));
 	}
 
+	ds28e16_flag = 1;
 	return 0;
 
 ds28e16_create_group_err:

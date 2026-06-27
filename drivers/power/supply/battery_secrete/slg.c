@@ -43,6 +43,13 @@ static const char *battery_id_name[] = {
 	"Unknow",
 };
 
+int slg_flag;
+int get_slg_authenice_id(void)
+{
+	return slg_flag;
+}
+EXPORT_SYMBOL(get_slg_authenice_id);
+
 static int slg_probe(struct platform_device *pdev);
 static int slg_remove(struct platform_device *pdev);
 bool slg_Auth_Result_b;
@@ -310,6 +317,7 @@ static int slg_probe(struct platform_device *pdev)
 		schedule_delayed_work(&slg_data->authentic_work,
 				msecs_to_jiffies(500));
 	}
+	slg_flag = 2;
 	return 0;
 
 slg_create_group_err:
