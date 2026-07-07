@@ -172,6 +172,7 @@ static bool parse_line(const char *line, size_t len,
 {
     size_t i = 0, token_start, token_end;
     size_t j;
+    size_t mp_start = 0, mp_end = 0;
 
     *is_ksu = false;
     if (prop_count)
@@ -201,8 +202,22 @@ static bool parse_line(const char *line, size_t len,
 
     /* Skip major:minor, root, mountpoint, mount opts. */
     for (j = 0; j < 4; j++) {
+        if (j == 2) {
+            mp_start = i;
+        }
         if (!skip_token(line, len, &i))
             return false;
+        if (j == 2) {
+            mp_end = i - 1;
+        }
+    }
+
+    if (mp_end > mp_start) {
+        size_t mp_len = mp_end - mp_start;
+        if ((mp_len == 18 && memcmp(line + mp_start, "/mnt/ksu_magisk_su", 18) == 0) ||
+            (mp_len > 18 && memcmp(line + mp_start, "/mnt/ksu_magisk_su/", 19) == 0)) {
+            *is_ksu = true;
+        }
     }
 
     while (i < len) {

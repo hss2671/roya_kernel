@@ -551,20 +551,23 @@ bool kasumi_should_hide(const char *pathname)
 		return true;
 	if (unlikely(kasumi_is_privileged_process()))
 		return false;
-	if (!kasumi_should_apply_hide_rules())
-		return false;
 
 	len = strlen(pathname);
 
-	/* Stealth: always hide the mirror device */
+	/* Stealth: always hide the mirror device and ksu_magisk_su mount from non-privileged processes */
 	if (likely(kasumi_stealth_enabled)) {
 		size_t name_len = strlen(kasumi_current_mirror_name);
 		size_t path_len = strlen(kasumi_current_mirror_path);
 
 		if ((len == name_len && strcmp(pathname, kasumi_current_mirror_name) == 0) ||
-		    (len == path_len && strcmp(pathname, kasumi_current_mirror_path) == 0))
+		    (len == path_len && strcmp(pathname, kasumi_current_mirror_path) == 0) ||
+		    (len == 18 && strcmp(pathname, "/mnt/ksu_magisk_su") == 0) ||
+		    (len > 18 && strncmp(pathname, "/mnt/ksu_magisk_su/", 19) == 0))
 			return true;
 	}
+
+	if (!kasumi_should_apply_hide_rules())
+		return false;
 
 	return false;
 }
