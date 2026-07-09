@@ -2392,14 +2392,6 @@ int sipa_i2c_probe(
 	g_wcd937x_sia_dev = si_pa;
 	/* lct_audio add end */
 
-	if (si_pa->pdev) {
-		si_pa->pm_link = device_link_add(&si_pa->pdev->dev, &client->dev, DL_FLAG_STATELESS);
-		if (si_pa->pm_link)
-			pr_info("[info][%s] Added device link between platform device and i2c client\n", __func__);
-		else
-			pr_err("[  err][%s] Failed to add device link!\n", __func__);
-	}
-
 #ifdef SIA91XX_TYPE
 	ret = sia91xx_detect_chip(si_pa);
 	if (ret < 0) {
@@ -2458,11 +2450,6 @@ int sipa_i2c_remove(
 
 	si_pa->client = NULL;
 
-	if (si_pa->pm_link) {
-		device_link_del(si_pa->pm_link);
-		si_pa->pm_link = NULL;
-	}
-
 	put_sipa_dev(si_pa);
 
 	return ret;
@@ -2514,17 +2501,25 @@ static struct i2c_driver si_sipa_i2c_driver = {
 static int sipa_pm_suspend(
 	struct device *dev)
 {
+#if 0
 	sipa_dev_t *si_pa = NULL;
 
 	pr_debug("[debug][%s] %s: running \r\n", LOG_FLAG, __func__);
 
+
 	si_pa = (sipa_dev_t *)dev_get_drvdata(dev);
 
 	return sipa_suspend(si_pa);
+#else
+	pr_debug("[debug][%s] %s: running \r\n", LOG_FLAG, __func__);
+
+	return 0;
+#endif
 }
 
 static int sipa_pm_resume(struct device *dev)
 {
+#if 0
 	sipa_dev_t *si_pa = NULL;
 
 	pr_debug("[debug][%s] %s: running \r\n", LOG_FLAG, __func__);
@@ -2532,6 +2527,11 @@ static int sipa_pm_resume(struct device *dev)
 	si_pa = (sipa_dev_t *)dev_get_drvdata(dev);
 
 	return sipa_resume(si_pa);
+#else
+	pr_debug("[debug][%s] %s: running \r\n", LOG_FLAG, __func__);
+
+	return 0;
+#endif
 }
 
 static const struct dev_pm_ops si_sipa_pm_ops = {

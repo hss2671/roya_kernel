@@ -97,7 +97,6 @@ typedef struct sipa_dev_s {
 
 	struct list_head list;
 	struct sipa_err err_info;
-	struct device_link *pm_link;
 } sipa_dev_t;
 
 struct sipa_chip_compat {
