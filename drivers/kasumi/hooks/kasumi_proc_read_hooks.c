@@ -280,7 +280,7 @@ static ssize_t kasumi_mount_proxy_read(struct file *file, char __user *buf,
 
 	if (proxy->kind == KASUMI_PROC_PROXY_MOUNTINFO &&
 	    (kasumi_feature_enabled_mask & KSM_FEATURE_MOUNT_HIDE) &&
-	    !kasumi_is_privileged_process()) {
+	    kasumi_should_apply_hide_rules()) {
 		pos = ppos ? *ppos : file->f_pos;
 		ret = kasumi_fake_mi_serve(file, buf, count, 0, pos);
 		if (ret == -1) {
@@ -304,7 +304,7 @@ static ssize_t kasumi_mount_proxy_read(struct file *file, char __user *buf,
 	    proxy->kind == KASUMI_PROC_PROXY_MOUNTS) {
 		if (!(kasumi_feature_enabled_mask & KSM_FEATURE_MOUNT_HIDE))
 			goto out;
-		if (kasumi_is_privileged_process())
+		if (!kasumi_should_apply_hide_rules())
 			goto out;
 		mutex_lock(&kasumi_read_filter_mutex);
 		if (copy_from_user(kasumi_read_filter_buf, buf, (size_t)ret)) {
@@ -322,7 +322,7 @@ static ssize_t kasumi_mount_proxy_read(struct file *file, char __user *buf,
 	if (proxy->kind == KASUMI_PROC_PROXY_MAPS) {
 		if (!(kasumi_feature_enabled_mask & KSM_FEATURE_MAPS_SPOOF))
 			goto out;
-		if (kasumi_is_privileged_process())
+		if (!kasumi_should_apply_hide_rules())
 			goto out;
 		mutex_lock(&kasumi_read_filter_mutex);
 		if (copy_from_user(kasumi_read_filter_buf, buf, (size_t)ret)) {
@@ -398,7 +398,7 @@ static ssize_t kasumi_mount_proxy_read_iter(struct kiocb *iocb,
 
 	if (proxy->kind != KASUMI_PROC_PROXY_MOUNTINFO ||
 	    !(kasumi_feature_enabled_mask & KSM_FEATURE_MOUNT_HIDE) ||
-	    kasumi_is_privileged_process()) {
+	    !kasumi_should_apply_hide_rules()) {
 		if (!proxy->orig_fops->read_iter) {
 			ret = -EINVAL;
 			goto out;
@@ -837,25 +837,6 @@ static int kasumi_parse_maps_line(const char *line, size_t line_len,
 	return 0;
 }
 
-static void kasumi_clean_smaps_line(char *line, size_t line_len, const char *prefix)
-{
-	size_t prefix_len = strlen(prefix);
-	if (line_len > prefix_len && memcmp(line, prefix, prefix_len) == 0) {
-		char *p = line + prefix_len;
-		char *end = line + line_len;
-		while (p < end && *p == ' ')
-			p++;
-		if (p < end && *p >= '0' && *p <= '9') {
-			*p = '0';
-			p++;
-			while (p < end && *p >= '0' && *p <= '9') {
-				*p = ' ';
-				p++;
-			}
-		}
-	}
-}
-
 /* Filter /proc/pid/maps buffer: replace lines matching a rule with spoofed ino/dev/pathname.
  * In-place and fixed length. seq_read has already advanced by the original byte count, so
  * shortening the returned buffer would make user space skip later mappings such as [stack].
@@ -872,7 +853,6 @@ static size_t kasumi_filter_maps_lines(char *kbuf, size_t len, bool *changed)
 	const char *spoof_name;
 	size_t path_len, max_path;
 	int n;
-	bool clean_smaps_stats = false;
 
 	if (changed)
 		*changed = false;
@@ -910,82 +890,11 @@ static size_t kasumi_filter_maps_lines(char *kbuf, size_t len, bool *changed)
 
 		if (kasumi_parse_maps_line(kbuf + line_start, line_len,
 					 &start, &end, flags, &pgoff, &dev, &ino, &pathname) != 0) {
-			if (clean_smaps_stats) {
-				kasumi_clean_smaps_line(kbuf + line_start, line_len, "Shared_Dirty:");
-				kasumi_clean_smaps_line(kbuf + line_start, line_len, "Private_Dirty:");
-				kasumi_clean_smaps_line(kbuf + line_start, line_len, "Anonymous:");
-				kasumi_clean_smaps_line(kbuf + line_start, line_len, "Swap:");
-				kasumi_clean_smaps_line(kbuf + line_start, line_len, "SwapPss:");
-			}
 			if (out != line_start)
 				memmove(kbuf + out, kbuf + line_start, line_len);
 			out += line_len;
 			in++;
 			continue;
-		}
-
-		{
-			bool is_exec = (flags[2] == 'x');
-			bool is_anon = (dev == 0 && ino == 0);
-			bool is_rwx = (flags[1] == 'w' && flags[2] == 'x');
-
-			if (is_exec && is_anon) {
-				bool is_suspicious = true;
-				if (pathname && *pathname != '\0') {
-					if (strstr(pathname, "dalvik-jit"))
-						is_suspicious = false;
-				}
-				if (is_suspicious) {
-					char *p_flags = kbuf + line_start;
-					while (p_flags < kbuf + line_start + line_len && *p_flags != '-')
-						p_flags++;
-					if (p_flags < kbuf + line_start + line_len && *p_flags == '-') {
-						p_flags++;
-						while (p_flags < kbuf + line_start + line_len && *p_flags != ' ')
-							p_flags++;
-						if (p_flags < kbuf + line_start + line_len && *p_flags == ' ') {
-							p_flags++;
-							if (p_flags + 2 < kbuf + line_start + line_len && p_flags[2] == 'x') {
-								p_flags[2] = '-';
-								flags[2] = '-';
-								is_exec = false;
-								if (changed)
-									*changed = true;
-							}
-						}
-					}
-				}
-			}
-
-			if (is_rwx) {
-				bool is_art = false;
-				if (pathname && *pathname != '\0') {
-					if (strstr(pathname, "dalvik-jit") || strstr(pathname, "jit-zygote-cache"))
-						is_art = true;
-				}
-				if (!is_art) {
-					char *p_flags = kbuf + line_start;
-					while (p_flags < kbuf + line_start + line_len && *p_flags != '-')
-						p_flags++;
-					if (p_flags < kbuf + line_start + line_len && *p_flags == '-') {
-						p_flags++;
-						while (p_flags < kbuf + line_start + line_len && *p_flags != ' ')
-							p_flags++;
-						if (p_flags < kbuf + line_start + line_len && *p_flags == ' ') {
-							p_flags++;
-							if (p_flags + 2 < kbuf + line_start + line_len && p_flags[1] == 'w' && p_flags[2] == 'x') {
-								p_flags[1] = '-';
-								flags[1] = '-';
-								if (changed)
-									*changed = true;
-							}
-						}
-					}
-				}
-			}
-
-			/* Keep cleaning dirty stats for all library files (.so) and runtime libraries even if marked non-executable. */
-			clean_smaps_stats = (pathname && (strstr(pathname, ".so") || strstr(pathname, "libandroid_runtime") || strstr(pathname, "dalvik") || is_anon));
 		}
 		spoof_ino = ino;
 		spoof_dev = dev;
@@ -1103,7 +1012,7 @@ static KASUMI_NOCFI int kasumi_read_mount_filter_ret(struct kretprobe_instance *
 	is_mountinfo = (kasumi_feature_enabled_mask & KSM_FEATURE_MOUNT_HIDE) &&
 		       kasumi_path_is_proc_mount_view(path);
 	if (is_mountinfo) {
-		should_hide = !kasumi_is_privileged_process();
+		should_hide = kasumi_should_apply_hide_rules();
 		kasumi_log("mount_filter: uid=%u comm=%s explicit=%d hide=%d path=%s\n",
 			 __kuid_val(current_uid()), current->comm,
 			 d->use_explicit_pos ? 1 : 0, should_hide ? 1 : 0, path);
@@ -1167,7 +1076,7 @@ static KASUMI_NOCFI int kasumi_read_mount_filter_ret(struct kretprobe_instance *
 
 	/* /proc/.../maps or .../smaps: spoof ino/dev/pathname by rule */
 	if ((kasumi_feature_enabled_mask & KSM_FEATURE_MAPS_SPOOF) &&
-	    !kasumi_is_privileged_process() &&
+	    kasumi_should_apply_hide_rules() &&
 	    strncmp(path, "/proc/", 6) == 0 &&
 	    (strstr(path, "/maps") || strstr(path, "/smaps"))) {
 		free_page((unsigned long)path_buf);
@@ -1240,7 +1149,7 @@ static KASUMI_NOCFI int kasumi_vfs_read_mount_filter_ret(struct kretprobe_instan
 	is_mountinfo = (kasumi_feature_enabled_mask & KSM_FEATURE_MOUNT_HIDE) &&
 		       kasumi_path_is_proc_mount_view(path);
 	if (is_mountinfo) {
-		should_hide = !kasumi_is_privileged_process();
+		should_hide = kasumi_should_apply_hide_rules();
 		kasumi_log("mount_filter(vfs): uid=%u comm=%s explicit=%d hide=%d path=%s\n",
 			 __kuid_val(current_uid()), current->comm,
 			 d->use_explicit_pos ? 1 : 0, should_hide ? 1 : 0, path);
@@ -1298,7 +1207,7 @@ static KASUMI_NOCFI int kasumi_vfs_read_mount_filter_ret(struct kretprobe_instan
 	}
 
 	if ((kasumi_feature_enabled_mask & KSM_FEATURE_MAPS_SPOOF) &&
-	    !kasumi_is_privileged_process() &&
+	    kasumi_should_apply_hide_rules() &&
 	    strncmp(path, "/proc/", 6) == 0 &&
 	    (strstr(path, "/maps") || strstr(path, "/smaps"))) {
 		free_page((unsigned long)path_buf);
