@@ -339,7 +339,7 @@ int watermark_boost_factor __read_mostly;
 #else
 int watermark_boost_factor __read_mostly = 0;
 #endif
-int watermark_scale_factor = 150;
+int watermark_scale_factor = 200;
 
 /*
  * Extra memory for the system to try freeing. Used to temporarily
