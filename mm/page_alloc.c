@@ -337,9 +337,9 @@ int user_min_free_kbytes = -1;
  */
 int watermark_boost_factor __read_mostly;
 #else
-int watermark_boost_factor __read_mostly = 0;
+int watermark_boost_factor __read_mostly = 15000;
 #endif
-int watermark_scale_factor = 150;
+int watermark_scale_factor = 10;
 
 /*
  * Extra memory for the system to try freeing. Used to temporarily
@@ -8241,11 +8241,6 @@ int watermark_boost_factor_sysctl_handler(struct ctl_table *table, int write,
 	if (rc)
 		return rc;
 
-	if (write) {
-		watermark_boost_factor = 0;
-		setup_per_zone_wmarks();
-	}
-
 	return 0;
 }
 
@@ -8274,11 +8269,8 @@ int watermark_scale_factor_sysctl_handler(struct ctl_table *table, int write,
 	if (rc)
 		return rc;
 
-	if (write) {
-		if (watermark_scale_factor < 100)
-			watermark_scale_factor = 100;
+	if (write)
 		setup_per_zone_wmarks();
-	}
 
 	return 0;
 }
